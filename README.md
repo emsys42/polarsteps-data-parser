@@ -17,14 +17,15 @@ git clone https://github.com/niekvleeuwen/polarsteps-trip-analyzer.git
 cd polarsteps-trip-analyzer
 ```
 
-Install dependencies using Poetry:
+Install dependencies and activate environment using Poetry:
 
 ```shell
 poetry install
+`poetry env activate`
 ```
 
 ### Usage
-To run the project, use the following command:
+To run the project, use the following command inside activated environment:
 
 ```shell
 polarsteps-data-parser [OPTIONS]
@@ -34,6 +35,13 @@ For example, to load and analyse a trip with the data located in the `./data/tri
 
 ```shell
 polarsteps-data-parser --input-folder ./data/trip1
+```
+
+### Tests
+Some tests are added. Execute them inside acivated environment:
+
+```shell
+pytest polarsteps_data_parser/model_test.py 
 ```
 
 ## Disclaimer
