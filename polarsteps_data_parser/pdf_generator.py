@@ -22,16 +22,15 @@ class PDFGenerator:
         self.width, self.height = letter
         self.y_position = self.height - 30
 
-    def generate_pdf(self, trip: Trip) -> None:
+    def generate_pdf(self, trip: Trip, progress_bar) -> None:
         """Generate a PDF for a given trip."""
         self.canvas.setTitle(trip.name)
-
         self.generate_title_page(trip)
-
-        no_of_steps = len(trip.steps)
-        for i, step in enumerate(trip.steps[:2], start=1):
-            logger.debug(f"{i}/{no_of_steps} generating pages for step {step.name}")
-            self.generate_step_pages(step)
+        with progress_bar as visible_bar:
+            for i, step in enumerate(trip.steps):
+                logger.debug(f"{i}/{len(trip.steps)} generating pages for step {step.name}")
+                self.generate_step_pages(step)
+                visible_bar.update(i)
 
         self.canvas.save()
 
@@ -120,7 +119,7 @@ class PDFGenerator:
             )
             self.y_position = self.y_position - new_height - 20
         except Exception as e:
-            logger.warning(f"Failed to load image {photo_path}: {e}")
+            logger.error(f"Failed to load image {photo_path}: {e}")
 
     def wrap_text(self, text: str, max_width: int) -> list:
         """Wrap text to fit within max_width."""
