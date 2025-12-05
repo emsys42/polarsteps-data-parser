@@ -47,6 +47,7 @@ def find_folder_by_id(folder_id: str) -> Path | None:
     for folder in base_path.iterdir():
         if folder.is_dir() and folder.name.endswith(f"_{folder_id}"):
             return folder
+        
     return None
 
 
