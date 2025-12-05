@@ -1,6 +1,5 @@
-from pathlib import Path
-
 from loguru import logger
+from pathlib import Path
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.pdfmetrics import stringWidth
@@ -31,7 +30,6 @@ class PDFGenerator:
                 logger.debug(f"{i}/{len(trip.steps)} generating pages for step {step.name}")
                 self.generate_step_pages(step)
                 visible_bar.update(i)
-
         self.canvas.save()
 
     def generate_title_page(self, trip: Trip) -> None:

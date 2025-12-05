@@ -3,20 +3,20 @@ import json
 import model
 
 
-def assert_equal_json_docs(lhs:str, rhs:str):
+def assert_equal_json_docs(lhs: str, rhs: str):  # noqa: D103
     lhs_formatted = json.dumps(json.loads(lhs), indent=4)
     rhs_formatted = json.dumps(json.loads(rhs), indent=4)
 
     if lhs_formatted != rhs_formatted:
         with open("compare_json_docs_lhs.txt", "w") as f:
-          f.write(lhs_formatted)
+            f.write(lhs_formatted)
         with open("compare_json_docs_rhs.txt", "w") as f:
-          f.write(rhs_formatted)
-      
+            f.write(rhs_formatted)
+
     assert lhs_formatted == rhs_formatted
 
 
-def make_json_doc_photo_cover() -> str:
+def make_json_doc_photo_cover() -> str:  # noqa: D103
     return """{
         "id": 13219871,
         "path": "https://polarsteps.s3.amazonaws.com/user_images/7.jpg",
@@ -31,7 +31,7 @@ def make_json_doc_photo_cover() -> str:
     }"""
 
 
-def make_json_doc_follower() -> str:
+def make_json_doc_follower() -> str:  # noqa: D103
     return """{
             "id": 44,
             "username": "user name",
@@ -40,7 +40,7 @@ def make_json_doc_follower() -> str:
         }"""
 
 
-def make_json_doc_step_location(location_id:str) -> str:
+def make_json_doc_step_location(location_id: str) -> str:  # noqa: D103
     match location_id:
         case "a":
             return """{
@@ -54,7 +54,7 @@ def make_json_doc_step_location(location_id:str) -> str:
                     "venue": null,
                     "uuid": "d5ee227a-1d49-4394-9dbb-65139d07d713"
                 }"""
-        
+
         case "b":
             return """{
                     "id": 216171841,
@@ -71,7 +71,7 @@ def make_json_doc_step_location(location_id:str) -> str:
             raise NotImplementedError(f"location_id {location_id} not found")
 
 
-def make_json_doc_single_step(step_id:str, location_id:str) -> str:
+def make_json_doc_single_step(step_id: str, location_id: str) -> str:  # noqa: D103
     step_location = make_json_doc_step_location(location_id)
     match step_id:
         case "a":
@@ -101,7 +101,7 @@ def make_json_doc_single_step(step_id:str, location_id:str) -> str:
                 "weather_temperature": 23.0,
                 "uuid": "ae2b0048-1311-47b4-8c06-f7cc47227ac6"
             }""" % (step_location)
-        
+
         case "b":
             return """{
                 "id": 174638111,
@@ -129,15 +129,16 @@ def make_json_doc_single_step(step_id:str, location_id:str) -> str:
                 "weather_temperature": 22.0,
                 "uuid": "b41a8fa2-2534-4d9d-91f7-497a645a768d"
             }""" % (step_location)
-        
+
         case _:
             raise NotImplementedError(f"step_id {step_id} not found")
-        
 
-def make_json_doc_trip_with_two_steps():
-    two_steps = ','.join(make_json_doc_single_step(step_id="a", location_id="a"),
-                         make_json_doc_single_step(step_id="b", location_id="b"))
-    
+
+def make_json_doc_trip_with_two_steps() -> None:  # noqa: D103
+    two_steps = ",".join(
+        make_json_doc_single_step(step_id="a", location_id="a"), make_json_doc_single_step(step_id="b", location_id="b")
+    )
+
     photo_cover = make_json_doc_photo_cover()
 
     return """{
@@ -180,7 +181,7 @@ def make_json_doc_trip_with_two_steps():
     }""" % (photo_cover, two_steps)
 
 
-def test_Location_from_json():
+def test_Location_from_json() -> None:  # noqa: D103
     text = """{
         "lat": 48.8085568,
         "lon": 9.3774813,
@@ -193,9 +194,9 @@ def test_Location_from_json():
     assert testee.lat == 48.8085568
     assert testee.lon == 9.3774813
     assert testee.time.timestamp() == 1752638400.0
-    
 
-def test_StepLocation_from_json():
+
+def test_StepLocation_from_json() -> None:  # noqa: D103
     doc = make_json_doc_step_location("a")
     json_dic = json.loads(doc)
 
@@ -205,5 +206,3 @@ def test_StepLocation_from_json():
     assert testee.lon == 9.3774813
     assert testee.name == "Weinstadt"
     assert testee.country == "Germany"
-
-
