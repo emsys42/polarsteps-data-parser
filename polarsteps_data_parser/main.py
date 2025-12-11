@@ -13,7 +13,7 @@ import polarsteps_data_parser.utils as utils
 ALL_STEPS_KEYWORD = "all"
 
 
-def validate_selected_steps(ctx, param, value) -> str | None:
+def validate_option_filter(ctx, param, value) -> str | None:
     """Validate the step_map option value."""
     if value is None:
         return ALL_STEPS_KEYWORD
@@ -63,7 +63,7 @@ def validate_selected_steps(ctx, param, value) -> str | None:
     default=None,
     help="Specify which steps to process as list (e.g. '2,6') or range (e.g. '5-7') or combinations thereof. " \
     "Otherwise all existing steps are processed.",
-    callback=validate_selected_steps,
+    callback=validate_option_filter,
 )
 @click.option(
     "--log",
@@ -98,9 +98,11 @@ def cli(
     if pdf_filename is not None:
         generate_pdf(trip, output_folder, pdf_filename, steps_to_process)
 
-    if generate_maps:
+    if generate_maps and "step" in generate_maps:
         generate_maps_for_steps(output_folder, trip, steps_to_process)
 
+    if generate_maps and "trip" in generate_maps:
+        logger.debug("Generating map for entire trip")
 
 def generate_statistics(trip: Trip, locations: list[MapGenerator.GPSPoint]) -> None:  # noqa: D103
     """Generate and print statistics about the trip and location data."""
