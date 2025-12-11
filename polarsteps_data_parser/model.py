@@ -111,3 +111,10 @@ class Trip:
             found_videos += new_videos
         logger.debug(f"Found {found_fotos} photos and {found_videos} videos for trip '{self.name}'")
         return found_fotos, found_videos
+
+
+    def get_step(self, step_number: int) -> Step:
+        """Get step by its number (1-based)."""
+        if step_number < 1 or step_number > len(self.steps):
+            raise IndexError(f"Step number {step_number} is out of range for trip with {len(self.steps)} steps.")
+        return self.steps[step_number - 1]

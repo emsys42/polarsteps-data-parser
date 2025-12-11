@@ -55,10 +55,10 @@ class MapGenerator:
         self._ratio = 1.0
         self._symbol_color = self.RED
 
-    def set_image_properties(self, width_pixels: int, ratio_y_over_x: float) -> None:
+    def set_image_properties(self, width_pixels: int, ratio_x_over_y: float) -> None:
         """Set the image size and ratio for the generated map."""
         self._def_width = width_pixels
-        self._ratio = ratio_y_over_x
+        self._ratio = ratio_x_over_y
 
     def set_zoom(self, zoom: int) -> None:  # noqa: D102
         self._context.set_zoom(zoom)
@@ -95,7 +95,7 @@ def test_map_generation() -> None:  # noqa: D103
 
     generator = MapGenerator(MapGenerator.PROVIDER_OSM)
     generator.set_zoom(8)
-    generator.set_image_properties(width_pixels=1200, ratio_y_over_x=2 / 3)
+    generator.set_image_properties(width_pixels=1200, ratio_x_over_y=2 / 3)
     generator.set_symbol_color(MapGenerator.RED)
 
     generator.add_location_marker(GPSPoint(lat=52, lon=5), marker_size=SINGLE_STEP_MAP_MARKER_SIZE)

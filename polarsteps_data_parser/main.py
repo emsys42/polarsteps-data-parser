@@ -1,13 +1,14 @@
 import os
 import sys
 from pathlib import Path
+from typing import Optional
 
 import click
 from loguru import logger
 
 import polarsteps_data_parser.utils as utils
 from polarsteps_data_parser.map_generator import MapGenerator
-from polarsteps_data_parser.model import Location, Trip, Step
+from polarsteps_data_parser.model import Location, Step, Trip
 from polarsteps_data_parser.pdf_generator import PDFGenerator
 
 
@@ -220,19 +221,19 @@ def cli(
     trip = load_trip_data(Path(input_folder), "trip.json")
     locations = load_location_data(Path(input_folder), "locations.json")
 
+    config = UserConfig(input_folder, output_folder, zoom_factor, image_size_x_y, calulate_steps_to_process(step_filter, trip))
+
     if statistics:
         generate_statistics(trip, locations)
 
-    steps_to_process = calulate_steps_to_process(step_filter, trip)
-
     if pdf_filename is not None:
-        generate_pdf(trip, output_folder, pdf_filename, steps_to_process)
+        generate_pdf(config, trip, pdf_filename)
 
     if generate_maps and "step" in generate_maps:
-        generate_distinct_map_for_selected_steps(output_folder, steps_to_process)
+        generate_distinct_map_for_selected_steps(config, trip)
 
     if generate_maps and "trip" in generate_maps:
-        generate_single_map_for_selected_steps(output_folder, generate_maps, steps_to_process)
+        generate_single_map_for_selected_steps(config, trip, generate_maps)
 
 
 def generate_statistics(trip: Trip, locations: list[MapGenerator.GPSPoint]) -> None:  # noqa: D103
@@ -246,73 +247,79 @@ def generate_statistics(trip: Trip, locations: list[MapGenerator.GPSPoint]) -> N
     click.echo(f"Number of GPS points in locations file: {len(locations)}")
 
 
-def generate_pdf(trip: Trip, output_path: Path, filename: str, steps_to_process: list[Step]) -> None:  # noqa: D103
-    output_file = Path(os.path.join(output_path, filename))
+def generate_pdf(config: UserConfig, trip: Trip, filename: str) -> None:  # noqa: D103
+    output_path = Path(os.path.join(config.output_folder, filename))
     progress_bar = click.progressbar(
-        length=len(steps_to_process), label=f"Generating PDF for {len(steps_to_process)} steps into {output_file}"
+        length=len(config.step_numbers_to_process),
+        label=f"Generating PDF for {len(config.step_numbers_to_process)} steps into {output_path}",
     )
-    pdf_generator = PDFGenerator(output_file.as_posix())
-    pdf_generator.generate_pdf(trip, progress_bar, steps_to_process)
+    pdf_generator = PDFGenerator(output_path.as_posix())
+    pdf_generator.generate_pdf(trip, progress_bar, config.step_numbers_to_process)
 
 
-def generate_distinct_map_for_selected_steps(output_folder: str, steps_to_process: list[Step]) -> None:  # noqa: D103
+def generate_distinct_map_for_selected_steps(config: UserConfig, trip: Trip) -> None:  # noqa: D103
     progress_bar = click.progressbar(
-        length=len(steps_to_process),
-        label=f"Generating maps for {len(steps_to_process)} steps into folder {output_folder}",
+        length=len(config.step_numbers_to_process),
+        label=f"Generating maps for {len(config.step_numbers_to_process)} steps into folder {config.output_folder}",
     )
     with progress_bar as visible_bar:
-        for i, step_to_process in enumerate(steps_to_process):
-            generate_distinct_map_for_selected_step(output_folder, i+1, step_to_process)
-            visible_bar.update(i)
+        for zero_based_index, step_number in enumerate(config.step_numbers_to_process):
+            step = trip.get_step(step_number)
+            generate_distinct_map_for_selected_step(config, step_number, step)
+            visible_bar.update(zero_based_index + 1)
 
 
-def generate_distinct_map_for_selected_step(output_folder: str, number_of_step: int, step: Step) -> None:  # noqa: D103
-    output_map_path = Path(os.path.join(output_folder, f"step_{number_of_step}_map.png"))
-    logger.debug(f"Generating map for step {number_of_step} into {output_map_path}")
-    map_generator: MapGenerator = build_map_generator("DETAIL_VIEW")
+def generate_distinct_map_for_selected_step(config: UserConfig, step_number: int, step: Step) -> None:  # noqa: D103
+    filename = config.step_map_filename_pattern.format(step_number=step_number)
+    output_path = Path(os.path.join(config.output_folder, filename))
+    logger.debug(f"Generating map for step {step_number} into {output_path}")
+    map_generator: MapGenerator = build_map_generator(config, "SINGLE_STEP_VIEW")
     gps_point = MapGenerator.GPSPoint(lat=step.location.lat, lon=step.location.lon)
     map_generator.add_location_marker(gps_point, marker_size=12)
-    map_generator.write_to_png(output_map_path)
+    map_generator.write_to_png(output_path)
 
 
-def generate_single_map_for_selected_steps(output_folder:str, generate_maps:str, steps_to_process:Step)-> None:  # noqa: D103
-    output_map_path = Path(os.path.join(output_folder, "trip_map.png"))
-    logger.info(f"Generating map for selected steps into {output_map_path}")
+def generate_single_map_for_selected_steps(config: UserConfig, trip: Trip, generate_maps: str) -> None:  # noqa: D103
+    output_path = Path(os.path.join(config.output_folder, config.trip_map_filename_pattern))
+    logger.info(f"Generating map for selected steps into {output_path}")
 
     progress_bar = click.progressbar(
         length=1,
-        label=f"Generating map for selected steps into {output_map_path}",
+        label=f"Generating map for selected steps into {output_path}",
     )
     with progress_bar as visible_bar:
-        map_generator: MapGenerator = build_map_generator("SATTELITE_VIEW")
-        gps_points = MapGenerator.GPSPoint.from_tuples(
-                [(step.location.lat, step.location.lon) for step in steps_to_process]
-            )
+        map_generator: MapGenerator = build_map_generator(config, "SATELLITE_VIEW")
+        gps_tuples = []
+        for step_number in config.step_numbers_to_process:
+            step_location = trip.get_step(step_number).location
+            gps_tuples.append((step_location.lat, step_location.lon))
+        gps_points = MapGenerator.GPSPoint.from_tuples(gps_tuples)
         if "wl" in generate_maps:
             map_generator.set_symbol_color(MapGenerator.BLUE)
             map_generator.add_multi_line(gps_points, width=4)
-
         map_generator.add_location_markers(gps_points, marker_size=12)
-        map_generator.write_to_png(output_map_path)
+        map_generator.write_to_png(output_path)
         visible_bar.update(1)
 
 
-def build_map_generator(style:str) -> MapGenerator:  # noqa: D103
+def build_map_generator(config: UserConfig, style: str) -> MapGenerator:  # noqa: D103
     map_generator = None
     match style:
-        case "DETAIL_VIEW":
-            # maybe load different map styles based on config
+        case "SINGLE_STEP_VIEW":
             map_generator = MapGenerator(MapGenerator.PROVIDER_OSM)
-            map_generator.set_zoom(Const.DEFAULT_ZOOM_LEVEL_SINGLE_STEP_VIEW)
-            map_generator.set_image_properties(width_pixels=1200, ratio_y_over_x=2 / 3)
+            map_generator.set_zoom(config.zoom_factor)
+            map_generator.set_image_properties(config.image_pixel_width, config.ratio_x_over_y)
 
-        case "SATTELITE_VIEW":
+        case "SATELLITE_VIEW":
             map_generator = MapGenerator(MapGenerator.PROVIDER_ARCGISWORLDIMAGERY)
-            # let generator select a suitable zoom level
+            # Don't specify zoom factor. Generator will select a suitable one.
+            map_generator.set_image_properties(config.image_pixel_width, config.ratio_x_over_y)
+
         case _:
             raise ValueError(f"Unknown map style '{style}'")
 
     return map_generator
+
 
 def configure_logger(loglevel: str) -> None:  # noqa: D103
     logger.remove()
@@ -322,21 +329,21 @@ def configure_logger(loglevel: str) -> None:  # noqa: D103
         logger.debug(f"logger set to loglevel '{loglevel}'")
 
 
-def calulate_steps_to_process(step_filter: str, trip: Trip) -> list[Step]:  # noqa: D103
+def calulate_steps_to_process(step_filter: str, trip: Trip) -> list[int]:  # noqa: D103
     if step_filter == Const.ALL_STEPS_KEYWORD:
-        steps_to_generate = range(1, len(trip.steps) + 1)
+        steps_to_process = range(1, len(trip.steps) + 1)
     else:
-        steps_to_generate = utils.decode_step_filter(step_filter)
-    min_step_to_generate = steps_to_generate[0]
-    max_step_to_generate = steps_to_generate[-1]
-    if min_step_to_generate < 1:
-        raise ValueError(f"Filter is invalid. Step number must be >= 1. Given '{min_step_to_generate}'.")
-    if max_step_to_generate > len(trip.steps):
+        steps_to_process = utils.decode_step_filter(step_filter)
+    min_step_to_process = steps_to_process[0]
+    max_step_to_process = steps_to_process[-1]
+    if min_step_to_process < 1:
+        raise ValueError(f"Filter is invalid. Step number must be >= 1. Given '{min_step_to_process}'.")
+    if max_step_to_process > len(trip.steps):
         raise ValueError(
-            f"Filter is invalid. Given step number '{max_step_to_generate}' exceeds the number \
+            f"Filter is invalid. Given step number '{max_step_to_process}' exceeds the number \
             of existing ({len(trip.steps)}) steps."
         )
-    return [trip.steps[i-1] for i in steps_to_generate]
+    return steps_to_process
 
 
 def load_location_data(input_folder: Path, trip_data_json_filename: str) -> list[Location]:  # noqa: D103
