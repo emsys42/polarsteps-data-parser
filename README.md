@@ -1,20 +1,44 @@
 # Polarsteps Data Parser
 
+This work is forked from https://github.com/niekvleeuwen/polarsteps-data-parser
+
 Tool designed to parse and extract data from the travel tracking app [Polarsteps](https://www.polarsteps.com/) data export. This tool serves two primary purposes:
 
-1. **Data backup**: The data export does not support viewing your data in any useful way. To preserve the data (who knows if Polarsteps still exists in 20 years), the tool combines the data and generates a PDF document.
-2. **Data analysis & visualization**: The parsed data can also be leveraged for in-depth analysis, enabling users to gain insights into their travel patterns, destinations visited, duration of stays, distances traveled, and more. This opens up possibilities for statistical analysis, trend identification, and visualization of the trip data.
+1. Generate a simple PDF document
+The tool combines the data and generates a PDF document. See parameter '--pdf'.
+
+2. Generate Maps
+It may generate maps with markers that shows the steps of the trip. See parameter '--map'.
+- Map with Satelite View background and location markers for all (or specified) steps
+- Distinct map with OSM background for each (or specified) step(s)
+
+3. Allows to specify the steps to process
+By default actions are applied to all steps. Its possible to select them. See parameter '--filter'.
+
+3. Create usable directory structure
+Backup of Polarsteps contains all media files inside folder structure that is neither sorted nor readable. 
+
+TBD (next push)
+
+- Create a sorted and usable directory structure based on existing PS data and move/copy media files
+into that structure. 
 
 ## Getting started
 
 ### Installation
 To set up the project, ensure you have Python 3.11+ installed. Follow these steps:
 
+This project uses Poetry to manage dependencies:
+
+```shell
+sudo apt-get install poetry
+```
+
 Clone the repository:
 
 ```shell
-git clone https://github.com/niekvleeuwen/polarsteps-trip-analyzer.git
-cd polarsteps-trip-analyzer
+git clone https://github.com/emsys42/polarsteps-data-parser
+cd polarsteps-data-parser
 ```
 
 Install dependencies and activate environment using Poetry:
@@ -28,13 +52,13 @@ poetry install
 To run the project, use the following command inside activated environment:
 
 ```shell
-polarsteps-data-parser [OPTIONS]
+python polarsteps-data-parser/main.py
 ```
 
-For example, to load and analyse a trip with the data located in the `./data/trip1` folder and enrich the trip with comments, use the following command:
+For example, to load and analyse a trip with the data located in the `./data/trip1` folder use the following command:
 
 ```shell
-polarsteps-data-parser --input-folder ./data/trip1
+python polarsteps-data-parser/main.py --input-folder ./data/trip1 --stat
 ```
 
 ### Tests
