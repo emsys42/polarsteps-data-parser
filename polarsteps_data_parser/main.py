@@ -69,6 +69,9 @@ def validate_selected_steps(ctx, param, value) -> str | None:
     "Otherwise all existing steps are processed.",
     callback=validate_selected_steps,
 )
+@click.option(
+    "--map", "generate_maps", is_flag=True, default=False, help="Generate maps for selected steps.", type=bool
+)
 @click.option("--stat", "statistics", is_flag=True, default=False, help="Print statistic of input files.", type=bool)
 def cli(
     input_folder: str,
@@ -77,6 +80,7 @@ def cli(
     loglevel: str,
     statistics: bool,
     step_filter: str,
+    generate_maps: bool,
 ) -> None:
     """Entry point for the application."""
     configure_logger(loglevel)
@@ -105,16 +109,9 @@ def cli(
     if pdf_filename is not None:
         generate_pdf(trip, output_folder, pdf_filename, steps_to_process)
 
-        click.echo(f"Trip name: {trip.name}")
-        click.echo(f"Number of steps: {len(trip.steps)}")
-        total_photos = sum(len(step.photos) for step in trip.steps)
-        total_videos = sum(len(step.videos) for step in trip.steps)
-        click.echo(f"Total photos: {total_photos}")
-        click.echo(f"Total videos: {total_videos}")
-        click.echo(f"Number of GPS points in locations file: {len(all_location)}")
+    if generate_maps:
+        generate_maps_for_steps(output_folder, trip, steps_to_process)
 
-    if pdf_output_file is not None:
-        generate_pdf(trip, pdf_output_file)
 
 def generate_statistics(trip: Trip, locations: list[MapGenerator.GPSPoint]) -> None:  # noqa: D103
     """Generate and print statistics about the trip and location data."""
@@ -136,12 +133,32 @@ def generate_pdf(trip: Trip, output_path: Path, filename: str, steps_to_process:
     pdf_generator.generate_pdf(trip, progress_bar, steps_to_process)
 
 
-def generate_pdf(trip: Trip, output_file: str) -> None:  # noqa: D103
+def generate_maps_for_steps(output_folder: str, trip: Trip, steps_to_process: list[int]) -> None:  # noqa: D103
     progress_bar = click.progressbar(
-        length=len(trip.steps), label=f"Generating PDF for {len(trip.steps)} steps into {output_file}"
+        length=len(steps_to_process),
+        label=f"Generating maps for {len(steps_to_process)} steps into folder {output_folder}",
     )
-    pdf_generator = PDFGenerator(output_file)
-    pdf_generator.generate_pdf(trip, progress_bar)
+    with progress_bar as visible_bar:
+        for number_of_step_to_generate in steps_to_process:
+            index_of_step_to_generate = number_of_step_to_generate - 1
+            step = trip.steps[index_of_step_to_generate]
+            generate_map_for_step(output_folder, number_of_step_to_generate, step)
+            visible_bar.update(number_of_step_to_generate)
+
+
+def generate_map_for_step(output_folder: str, number_of_step_to_generate: int, step: Step) -> None:  # noqa: D103
+    if step is None:
+        raise RuntimeError(f"Step {number_of_step_to_generate} not found in trip data. This should not happen.")
+    logger.debug(f"Generating map for step {number_of_step_to_generate} at location {step.location}")
+    map_generator = MapGenerator(MapGenerator.PROVIDER_OSM)
+    map_generator.set_zoom(8)
+    map_generator.set_image_properties(width_pixels=1200, ratio_y_over_x=2 / 3)
+    map_generator.set_symbol_color(MapGenerator.RED)
+    gps_point = MapGenerator.GPSPoint(lat=step.location.lat, lon=step.location.lon)
+    map_generator.add_location_marker(gps_point, marker_size=12)
+    output_map_path = Path(os.path.join(output_folder, f"step_{number_of_step_to_generate}_map.png"))
+    map_generator.write_to_png(output_map_path)
+    logger.info(f"Map for step {number_of_step_to_generate} written to {output_map_path}")
 
 
 def configure_logger(loglevel: str) -> None:  # noqa: D103

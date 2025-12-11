@@ -21,15 +21,16 @@ class PDFGenerator:
         self.width, self.height = letter
         self.y_position = self.height - 30
 
-    def generate_pdf(self, trip: Trip, progress_bar) -> None:
+    def generate_pdf(self, trip: Trip, progress_bar, number_of_steps_to_process:list[int]) -> None:
         """Generate a PDF for a given trip."""
         self.canvas.setTitle(trip.name)
         self.generate_title_page(trip)
         with progress_bar as visible_bar:
-            for i, step in enumerate(trip.steps):
-                logger.debug(f"{i}/{len(trip.steps)} generating pages for step {step.name}")
+            for i, number_of_step in enumerate(number_of_steps_to_process):
+                step = trip.steps[number_of_step - 1]
+                logger.debug(f"{i+1}/{len(number_of_steps_to_process)} generating pages for step {step.name}")
                 self.generate_step_pages(step)
-                visible_bar.update(i)
+                visible_bar.update(i+1)
         self.canvas.save()
 
     def generate_title_page(self, trip: Trip) -> None:
