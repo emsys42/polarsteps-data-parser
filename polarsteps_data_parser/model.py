@@ -1,4 +1,3 @@
-import os
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -6,7 +5,7 @@ from typing import Self
 
 from loguru import logger
 
-from polarsteps_data_parser.utils import find_folder_by_id, list_files_in_folder, parse_date
+import polarsteps_data_parser.utils as utils
 
 
 @dataclass
@@ -20,7 +19,7 @@ class Location:
     @classmethod
     def from_json(cls, data: dict) -> Self:
         """Parse object from JSON data."""
-        return Location(lat=data["lat"], lon=data["lon"], time=parse_date(data["time"]))
+        return Location(lat=data["lat"], lon=data["lon"], time=utils.parse_date(data["time"]))
 
 
 @dataclass
@@ -64,20 +63,20 @@ class Step:
             name=data["name"] or data["display_name"],
             description=data["description"],
             location=StepLocation.from_json(data["location"]),
-            date=parse_date(data["start_time"]),
+            date=utils.parse_date(data["start_time"]),
             photos=[],
             videos=[],
         )
-        s.load_media()
         return s
 
-    def load_media(self) -> None:
-        """Load photos and videos for the step."""
-        media_dir = find_folder_by_id(self.step_id)
-        if media_dir is not None:
-            self.photos = list_files_in_folder(os.path.join(media_dir, "photos"), dir_has_to_exist=False)
-            self.videos = list_files_in_folder(os.path.join(media_dir, "videos"), dir_has_to_exist=False)
-        logger.debug(f"Found {len(self.photos)} photos, {len(self.videos)} videos")
+    def lookup_media_files(self, input_folder: Path) -> None:
+        """Search for photos and videos for all steps in the file system."""
+        if self.step_id is None or self.step_id == "":
+            raise ValueError("Step ID is '{self.step_id}', cannot lookup media files.")
+        photos, videos = utils.find_media_files_of_step(self.step_id, input_folder)
+        self.photos = photos
+        self.videos = videos
+        return len(photos), len(videos)
 
 
 @dataclass
@@ -95,8 +94,20 @@ class Trip:
         """Parse object from JSON data."""
         return Trip(
             name=data["name"],
-            start_date=parse_date(data.get("start_date")),
-            end_date=parse_date(data.get("end_date")),
+            start_date=utils.parse_date(data.get("start_date")),
+            end_date=utils.parse_date(data.get("end_date")),
             cover_photo_path=data["cover_photo_path"],
             steps=[Step.from_json(step) for step in data.get("all_steps")],
         )
+
+
+    def lookup_media_files(self, input_folder: Path) -> tuple[int, int]:
+        """Search for photos and videos for all steps in the file system."""
+        found_fotos = 0
+        found_videos = 0
+        for step in self.steps:
+            new_fotos, new_videos = step.lookup_media_files(input_folder)
+            found_fotos += new_fotos
+            found_videos += new_videos
+        logger.debug(f"Found {found_fotos} photos and {found_videos} videos for trip '{self.name}'")
+        return found_fotos, found_videos

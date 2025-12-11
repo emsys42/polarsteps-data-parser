@@ -1,8 +1,7 @@
 import json
+import os
 from datetime import datetime
 from pathlib import Path
-
-import click
 
 
 def load_json_from_file(path: Path) -> dict:
@@ -33,22 +32,27 @@ def parse_date(date: str) -> datetime:
     return date_time
 
 
-def find_folder_by_id(folder_id: str) -> Path | None:
-    """Finds and returns the path of a folder within the base_directory that matches the given folder_id.
+def find_folder_by_id(folder_id: str, input_folder: Path) -> Path | None:
+    """Finds and returns the path of a folder within the base_directory that matches the given folder_id."""
+    if input_folder.exists() is False:
+        return None
 
-    Args:
-        folder_id (str): The ID to search for in the folder names.
-
-    Returns:
-        Path or None: The path of the matching folder, or None if no matching folder is found.
-    """
-    base_path = Path(click.get_current_context().params["input_folder"])
-
-    for folder in base_path.iterdir():
+    for folder in input_folder.iterdir():
         if folder.is_dir() and folder.name.endswith(f"_{folder_id}"):
             return folder
 
     return None
+
+
+def find_media_files_of_step(step_id: str, input_folder: Path) -> None:
+    """Load photos and videos for a given step."""
+    found_photos = []
+    found_videos = []
+    media_dir = find_folder_by_id(step_id, input_folder)
+    if media_dir is not None:
+        found_photos = list_files_in_folder(os.path.join(media_dir, "photos"), dir_has_to_exist=False)
+        found_videos = list_files_in_folder(os.path.join(media_dir, "videos"), dir_has_to_exist=False)
+    return found_photos, found_videos
 
 
 def list_files_in_folder(folder_path: Path, dir_has_to_exist: bool = True) -> list[Path]:

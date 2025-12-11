@@ -135,8 +135,10 @@ def make_json_doc_single_step(step_id: str, location_id: str) -> str:  # noqa: D
 
 
 def make_json_doc_trip_with_two_steps() -> None:  # noqa: D103
-    two_steps = ",".join(
-        make_json_doc_single_step(step_id="a", location_id="a"), make_json_doc_single_step(step_id="b", location_id="b")
+    two_steps = (
+        make_json_doc_single_step(step_id="a", location_id="a")
+        + ","
+        + make_json_doc_single_step(step_id="b", location_id="b")
     )
 
     photo_cover = make_json_doc_photo_cover()
@@ -206,3 +208,19 @@ def test_StepLocation_from_json() -> None:  # noqa: D103
     assert testee.lon == 9.3774813
     assert testee.name == "Weinstadt"
     assert testee.country == "Germany"
+
+
+def test_Trip_from_json_two_steps() -> None:  # noqa: D103
+    doc = make_json_doc_trip_with_two_steps()
+    json_dic = json.loads(doc)
+
+    testee = model.Trip.from_json(json_dic)
+
+    assert testee.name == "headline 2020"
+    assert testee.start_date.timestamp() == 1752616800.0
+    assert testee.end_date.timestamp() == 1760565599.0
+    assert len(testee.steps) == 2
+    assert testee.steps[0].name == "Weinstadt"
+    assert testee.steps[1].name == "Pleidelsheim"
+    assert testee.steps[0].location.name == "Weinstadt"
+    assert testee.steps[1].location.name == "Pleidelsheim"
