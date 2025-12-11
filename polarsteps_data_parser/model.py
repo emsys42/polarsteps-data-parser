@@ -43,51 +43,6 @@ class StepLocation:
 
 
 @dataclass
-class Follower:
-    """Follower (can leave comments)."""
-
-    user_id: str
-    username: str
-    first_name: str
-    last_name: str
-
-    @classmethod
-    def from_json(cls, data: dict) -> Self:
-        """Parse object from JSON data."""
-        return Follower(
-            user_id=data["id"],
-            username=data["username"],
-            first_name=data["first_name"],
-            last_name=data["last_name"],
-        )
-
-    @property
-    def name(self) -> str:
-        """Name of the follower."""
-        return f"{self.first_name} {self.last_name}"
-
-
-@dataclass
-class StepComment:
-    """Comment connected to a step."""
-
-    comment_id: str
-    text: str
-    date: str
-    follower: Follower
-
-    @classmethod
-    def from_json(cls, data: dict) -> Self:
-        """Parse object from JSON data."""
-        return StepComment(
-            comment_id=data["id"],
-            text=data["text"],
-            date=parse_date(data["creation_time"]),
-            follower=Follower.from_json(data["user"]),
-        )
-
-
-@dataclass
 class Step:
     """Polarsteps Step object."""
 
@@ -98,7 +53,6 @@ class Step:
     date: date
     photos: list[Path]
     videos: list[Path]
-    comments: list[StepComment]
 
     @classmethod
     def from_json(cls, data: dict) -> Self:
@@ -112,7 +66,6 @@ class Step:
             date=parse_date(data["start_time"]),
             photos=[],
             videos=[],
-            comments=[],
         )
         s.load_media()
         return s

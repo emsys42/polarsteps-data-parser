@@ -33,7 +33,7 @@ polarsteps-data-parser [OPTIONS]
 For example, to load and analyse a trip with the data located in the `./data/trip1` folder and enrich the trip with comments, use the following command:
 
 ```shell
-polarsteps-data-parser --input-folder ./data/trip1 --enrich-comments
+polarsteps-data-parser --input-folder ./data/trip1
 ```
 
 ## Disclaimer
