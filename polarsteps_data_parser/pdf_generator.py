@@ -18,15 +18,12 @@ class PDFGenerator:
     TITLE_HEADING_FONT = ("Helvetica-Bold", 36)
 
     def __init__(self, output: str) -> None:
-        self.filename = output
-        self.canvas = None
+        self.canvas = Canvas(output, pagesize=letter)
         self.width, self.height = letter
         self.y_position = self.height - 30
 
     def generate_pdf(self, trip: Trip) -> None:
         """Generate a PDF for a given trip."""
-        self.canvas = Canvas(self.filename, pagesize=letter)
-
         self.canvas.setTitle(trip.name)
 
         self.generate_title_page(trip)
