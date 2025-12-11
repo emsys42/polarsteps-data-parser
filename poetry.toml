@@ -1,0 +1,16 @@
+# Show configuration of poetry: 
+# <bash>$  poetry config --list
+
+[keyring]
+enabled = false
+
+[virtualenvs]
+create = true
+in-project = true
+prefer-active-python = true
+
+[virtualenvs.options]
+always-copy = true
+no-pip = false
+no-setuptools = false
+system-site-packages = false
