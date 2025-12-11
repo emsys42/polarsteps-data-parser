@@ -10,16 +10,16 @@ from polarsteps_data_parser.model import Location, Trip, Step
 from polarsteps_data_parser.pdf_generator import PDFGenerator
 import polarsteps_data_parser.utils as utils
 
-ALL_STEPS_KEYWORD = "all"
-
-
-def validate_option_filter(ctx, param, value) -> str | None:
+class Const:
+    """Application constants."""
+    ALL_STEPS_KEYWORD = "all"
+    DEFAULT_ZOOM_LEVEL_SINGLE_STEP_VIEW = 7
     """Validate the step_map option value."""
     if value is None:
-        return ALL_STEPS_KEYWORD
+        return Const.ALL_STEPS_KEYWORD
     try:
         value = value.strip().lower()
-        if value == ALL_STEPS_KEYWORD:
+        if value == Const.ALL_STEPS_KEYWORD:
             return value
         _ = utils.decode_step_filter(value)
     except ValueError as e:
@@ -87,7 +87,7 @@ def validate_option_map(ctx, param, value) -> bool:
     "--filter",
     "step_filter",
     is_flag=False,
-    # maybe use  'flag_value=ALL_STEPS_KEYWORD,' in combination with '# default=None'
+    # maybe use  'flag_value=Const.ALL_STEPS_KEYWORD,' in combination with '# default=None'
     default=None,
     help="Specify which steps to process as list (e.g. '2,6') or range (e.g. '5-7') or combinations thereof. " \
     "Otherwise all existing steps are processed.",
@@ -201,7 +201,7 @@ def build_map_generator(style:str) -> MapGenerator:  # noqa: D103
         case "DETAIL_VIEW":
             # maybe load different map styles based on config
             map_generator = MapGenerator(MapGenerator.PROVIDER_OSM)
-            map_generator.set_zoom(3)
+            map_generator.set_zoom(Const.DEFAULT_ZOOM_LEVEL_SINGLE_STEP_VIEW)
             map_generator.set_image_properties(width_pixels=1200, ratio_y_over_x=2 / 3)
 
         case "SATTELITE_VIEW":
@@ -221,7 +221,7 @@ def configure_logger(loglevel: str) -> None:  # noqa: D103
 
 
 def calulate_steps_to_process(step_filter: str, trip: Trip) -> list[Step]:  # noqa: D103
-    if step_filter == ALL_STEPS_KEYWORD:
+    if step_filter == Const.ALL_STEPS_KEYWORD:
         steps_to_generate = range(1, len(trip.steps) + 1)
     else:
         steps_to_generate = utils.decode_step_filter(step_filter)
