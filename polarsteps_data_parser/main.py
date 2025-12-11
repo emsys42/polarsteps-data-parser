@@ -52,13 +52,9 @@ def validate_selected_steps(ctx, param, value) -> str | None:
     help="Whether to generate a PDF. Specify name of PDF file to create.",
 )
 @click.option(
-    "--log",
-    "loglevel",
-    is_flag=False,
-    default=None,
-    help="Produce detailed output.",
-    type=click.Choice(["INFO", "DEBUG"]),
+    "--map", "generate_maps", is_flag=True, default=False, help="Generate maps for selected steps.", type=bool
 )
+@click.option("--stat", "statistics", is_flag=True, default=False, help="Print statistic of input files.", type=bool)
 @click.option(
     "--filter",
     "step_filter",
@@ -70,9 +66,13 @@ def validate_selected_steps(ctx, param, value) -> str | None:
     callback=validate_selected_steps,
 )
 @click.option(
-    "--map", "generate_maps", is_flag=True, default=False, help="Generate maps for selected steps.", type=bool
+    "--log",
+    "loglevel",
+    is_flag=False,
+    default=None,
+    help="Produce detailed output.",
+    type=click.Choice(["INFO", "DEBUG"]),
 )
-@click.option("--stat", "statistics", is_flag=True, default=False, help="Print statistic of input files.", type=bool)
 def cli(
     input_folder: str,
     output_folder: str,
