@@ -47,9 +47,6 @@ class MapGenerator:
     PROVIDER_CARTONOLABELS = staticmaps.tile_provider_CartoNoLabels
     PROVIDER_CARTODARKNOLABELS = staticmaps.tile_provider_CartoDarkNoLabels
     PROVIDER_NONE = staticmaps.tile_provider_None
-    PROVIDER_STAMENTERRAIN = staticmaps.tile_provider_StamenTerrain
-    PROVIDER_STAMENTONER = staticmaps.tile_provider_StamenToner
-    PROVIDER_STAMENTONERLITE = staticmaps.tile_provider_StamenTonerLite
 
     def __init__(self, provider: staticmaps.TileProvider) -> None:
         self._context = staticmaps.Context()
