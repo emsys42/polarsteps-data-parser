@@ -1,10 +1,12 @@
 import os
 from dataclasses import dataclass
-from datetime import datetime, date
-from loguru import logger
+from datetime import date, datetime
 from pathlib import Path
 from typing import Self
-from polarsteps_data_parser.utils import parse_date, find_folder_by_id, list_files_in_folder
+
+from loguru import logger
+
+from polarsteps_data_parser.utils import find_folder_by_id, list_files_in_folder, parse_date
 
 
 @dataclass
@@ -73,8 +75,8 @@ class Step:
         """Load photos and videos for the step."""
         media_dir = find_folder_by_id(self.step_id)
         if media_dir is not None:
-            self.photos = list_files_in_folder(os.path.join(media_dir,"photos"), dir_has_to_exist=False)
-            self.videos = list_files_in_folder(os.path.join(media_dir,"videos"), dir_has_to_exist=False)
+            self.photos = list_files_in_folder(os.path.join(media_dir, "photos"), dir_has_to_exist=False)
+            self.videos = list_files_in_folder(os.path.join(media_dir, "videos"), dir_has_to_exist=False)
         logger.debug(f"Found {len(self.photos)} photos, {len(self.videos)} videos")
 
 
