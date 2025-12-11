@@ -33,15 +33,15 @@ def validate_selected_steps(ctx, param, value) -> str | None:
     "input_folder",
     type=click.Path(exists=True),
     required=True,
-    help="""
-    The input folder should contain the Polarsteps data export of a single trip. This folder contains
-    both `trip.json` and `locations.json`.""",
+    help="""The folder which contains `trip.json` and `locations.json`.
+    It's inside the Polarsteps data export of a single trip.""",
 )
 @click.option(
     "--output-folder",
     "output_folder",
+    type=click.Path(exists=True),
     is_flag=False,
-    default=None,
+    default=os.getcwd(),
     help="The folder where to create artefacts. If not specified, the current working directory is used.",
 )
 @click.option(
@@ -83,22 +83,11 @@ def cli(
     generate_maps: bool,
 ) -> None:
     """Entry point for the application."""
+    # note: its ensured that both folders <input_folder> and <output_folder> exist by click options
+
     configure_logger(loglevel)
 
-    if not Path(input_folder).exists():
-        raise FileNotFoundError(f"Folder {input_folder} does not exist.")
-
-    if output_folder is None:
-        output_folder = os.getcwd()
-        logger.debug(f"No output folder specified. Using current working directory: {output_folder}")
-    else:
-        if not Path(output_folder).exists():
-            raise FileNotFoundError(f"Folder {output_folder} does not exist.")
-
-    # Load and process trip data
     trip = load_trip_data(Path(input_folder), "trip.json")
-
-    # Load and process locations data
     locations = load_location_data(Path(input_folder), "locations.json")
 
     if statistics:
