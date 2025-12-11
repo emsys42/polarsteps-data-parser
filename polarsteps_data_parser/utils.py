@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -74,3 +75,28 @@ def list_files_in_folder(folder_path: Path, dir_has_to_exist: bool = True) -> li
         return []
 
     return [file for file in folder.iterdir() if file.is_file()]
+
+
+def decode_step_filter(step_filter: str) -> list[int]:
+    """Split the step_map string into a list of step indices."""
+    regex_pattern = r"^\d+(-\d+)?(,\d+(-\d+)?)*$"
+    if re.search(regex_pattern, step_filter) is None:
+        raise ValueError("Specify steps as list e.g. '2,6' or range '5-7' or combinations thereof.")
+
+    steps = set()
+    for part in step_filter.split(","):
+        if "-" in part:
+            start, end = map(int, part.split("-"))
+            if start > end:
+                raise ValueError(
+                    f"Invalid range ({part}). Start of range ({start}) must be less than or equal to end ({end})."
+                )
+            if start == 0:
+                raise ValueError(f"Invalid range ({part}). Step number ({start}) must be >= 1.")
+            steps.update(range(start, end + 1))
+        else:
+            if int(part) == 0:
+                raise ValueError(f"Invalid step number ({part}). Must be >= 1.")
+            steps.add(int(part))
+
+    return sorted(steps)
