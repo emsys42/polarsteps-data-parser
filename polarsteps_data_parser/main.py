@@ -127,7 +127,7 @@ def cli(
         generate_pdf(trip, output_folder, pdf_filename, steps_to_process)
 
     if generate_maps and "step" in generate_maps:
-        generate_distinct_map_for_selected_steps(output_folder, trip, steps_to_process)
+        generate_distinct_map_for_selected_steps(output_folder, steps_to_process)
 
     if generate_maps and "trip" in generate_maps:
         generate_single_map_for_selected_steps(output_folder, generate_maps, steps_to_process)
@@ -153,7 +153,7 @@ def generate_pdf(trip: Trip, output_path: Path, filename: str, steps_to_process:
     pdf_generator.generate_pdf(trip, progress_bar, steps_to_process)
 
 
-def generate_distinct_map_for_selected_steps(output_folder: str, trip: Trip, steps_to_process: list[Step]) -> None:  # noqa: D103
+def generate_distinct_map_for_selected_steps(output_folder: str, steps_to_process: list[Step]) -> None:  # noqa: D103
     progress_bar = click.progressbar(
         length=len(steps_to_process),
         label=f"Generating maps for {len(steps_to_process)} steps into folder {output_folder}",
@@ -201,7 +201,7 @@ def build_map_generator(style:str) -> MapGenerator:  # noqa: D103
         case "DETAIL_VIEW":
             # maybe load different map styles based on config
             map_generator = MapGenerator(MapGenerator.PROVIDER_OSM)
-            map_generator.set_zoom(8)
+            map_generator.set_zoom(3)
             map_generator.set_image_properties(width_pixels=1200, ratio_y_over_x=2 / 3)
 
         case "SATTELITE_VIEW":
