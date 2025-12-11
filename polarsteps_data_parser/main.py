@@ -33,7 +33,8 @@ from polarsteps_data_parser.utils import load_json_from_file
     help="Produce detailed output.",
     type=click.Choice(["INFO", "DEBUG"]),
 )
-def cli(input_folder: str, pdf_output_file: str, loglevel: str) -> None:
+@click.option("--stat", "statistics", is_flag=True, default=False, help="Print statistic of input files.", type=bool)
+def cli(input_folder: str, pdf_output_file: str, loglevel: str, statistics: bool) -> None:
     """Entry point for the application."""
     configure_logger(loglevel)
 
@@ -45,12 +46,17 @@ def cli(input_folder: str, pdf_output_file: str, loglevel: str) -> None:
     location_data_path = Path(os.path.join(input_folder, "locations.json"))
     all_location = load_location_data(location_data_path)
 
+    if statistics:
+        click.echo(f"Trip name: {trip.name}")
+        click.echo(f"Number of steps: {len(trip.steps)}")
+        total_photos = sum(len(step.photos) for step in trip.steps)
+        total_videos = sum(len(step.videos) for step in trip.steps)
+        click.echo(f"Total photos: {total_photos}")
+        click.echo(f"Total videos: {total_videos}")
+        click.echo(f"Number of GPS points in locations file: {len(all_location)}")
+
     if pdf_output_file is not None:
         generate_pdf(trip, pdf_output_file)
-
-    dump_locations = True
-    if dump_locations:
-        print(f"Number of GPS points in locations file: {len(all_location)}")
 
 
 def generate_pdf(trip: Trip, output_file: str) -> None:  # noqa: D103
