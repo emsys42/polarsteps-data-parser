@@ -5,18 +5,99 @@ from pathlib import Path
 import click
 from loguru import logger
 
+import polarsteps_data_parser.utils as utils
 from polarsteps_data_parser.map_generator import MapGenerator
 from polarsteps_data_parser.model import Location, Trip, Step
 from polarsteps_data_parser.pdf_generator import PDFGenerator
-import polarsteps_data_parser.utils as utils
+
 
 class Const:
     """Application constants."""
+
     ALL_STEPS_KEYWORD = "all"
-    DEFAULT_ZOOM_LEVEL_SINGLE_STEP_VIEW = 7
+    ZOOM_LEVEL_SINGLE_STEP_VIEW_DEFAULT = 7
+    ZOOM_LEVEL_SINGLE_STEP_VIEW_MIN = 0
+    ZOOM_LEVEL_SINGLE_STEP_VIEW_MAX = 19
+    IMAGE_SIZE_X_DEFAULT = 800
+    IMAGE_SIZE_Y_DEFAULT = 600
+
+
+class UserConfig:
+    """User configuration constants."""
+
+    def __init__(self, input_folder: str, output_folder: str, zoom_factor: str, image_pixel_size: str, step_numbers_to_process: list[int]) -> None:
+        self._input_folder = input_folder
+        self._output_folder = output_folder
+        self._zoom_factor = int(zoom_factor)
+        self._image_pixel_width, self._image_pixel_height = utils.decode_image_size(image_pixel_size)
+        self._trip_map_filename_pattern = "trip_map.png"
+        self._step_map_filename_pattern = "step_{step_number}_map.png"
+        self._step_numbers_to_process = step_numbers_to_process
+
+    @property
+    def input_folder(self) -> str:  # noqa: D102
+        return self._input_folder
+
+    @property
+    def output_folder(self) -> str:  # noqa: D102
+        return self._output_folder
+
+    @property
+    def zoom_factor(self) -> int:  # noqa: D102
+        return self._zoom_factor
+
+    @property
+    def image_pixel_width(self) -> int:  # noqa: D102
+        return self._image_pixel_width
+
+    @property
+    def image_pixel_height(self) -> int:  # noqa: D102
+        return self._image_pixel_height
+
+    @property
+    def ratio_x_over_y(self) -> float:  # noqa: D102
+        return self.image_pixel_width / self.image_pixel_height
+
+    @property
+    def trip_map_filename_pattern(self) -> str:  # noqa: D102
+        return self._trip_map_filename_pattern
+
+    @property
+    def step_map_filename_pattern(self) -> str:  # noqa: D102
+        return self._step_map_filename_pattern
+
+    @property
+    def step_numbers_to_process(self) -> list[int]: # noqa: D102
+        return self._step_numbers_to_process
+
+
+def validate_zoom_factor(ctx, param, value) -> Optional[str]:
+    """Validate zoom token where N is a number between ZOOM_LEVEL_SINGLE_STEP_VIEW_[MIN/MAX]."""
+    try:
+        zoom_factor = int(value)
+    except ValueError:
+        raise click.BadParameter(f"Zoom factor must be an integer. Given '{value}'.")
+
+    if zoom_factor < Const.ZOOM_LEVEL_SINGLE_STEP_VIEW_MIN or zoom_factor > Const.ZOOM_LEVEL_SINGLE_STEP_VIEW_MAX:
+        raise click.BadParameter(
+            f"""Invalid zoom factor '{zoom_factor}'. It must be a number in range [{Const.ZOOM_LEVEL_SINGLE_STEP_VIEW_MIN} and {Const.ZOOM_LEVEL_SINGLE_STEP_VIEW_MAX}]."""
+        )
+    return value
+
+
+def validate_image_size(ctx, param, value) -> Optional[str]:
+    """Validate image size option value in format 'WIDTHxHEIGHT'."""
+    try:
+        _, _ = utils.decode_image_size(value)
+    except ValueError:
+        raise click.BadParameter(
+            f"Image size must be in format 'WIDTHxHEIGHT' with positive integers. Given '{value}'."
+        )
+    return value
+
+
+def validate_option_filter(ctx, param, value) -> Optional[str]:
     """Validate the step_map option value."""
-    if value is None:
-        return Const.ALL_STEPS_KEYWORD
     try:
         value = value.strip().lower()
         if value == Const.ALL_STEPS_KEYWORD:
@@ -26,15 +107,16 @@ class Const:
         raise click.BadParameter(e)
     return value
 
-def validate_option_map(ctx, param, value) -> bool:
+
+def validate_option_map(ctx, param, value) -> Optional[str]:
     """Validate the generate_maps option value.
+
     Possible values are:
-     --map trip: Genau eine Map generieren:
-                    Einem Marker für jedem Step (filter beachten) hinzufügen
-                    Optional Linie zum vorherigen Step hinzufügen  
-     --map step: Für jeden Step (filter beachten):
-                    Eine Map mit genau einem Marker für den Step generieren
-     --map trip,wl: <trip> + Linie zum vorherigen Step hinzufügen  
+     --map trip: Create exactly one map for the entire trip:
+                 Add a marker for each step (with respect to filter)´
+     --map trip,wl: Same as 'trip' but additional add a line to marker of preceding step
+     --map step: Create a map for each step (with respect to filter) with a marker for this step only
+                 May be combine with '--zoom'.
     """
     if value is None:
         return value
@@ -42,10 +124,9 @@ def validate_option_map(ctx, param, value) -> bool:
     value = value.strip().lower()
     for token in value.split(","):
         if token not in allowed_values:
-            raise click.BadParameter(
-                f"Invalid value for --map option. Allowed values are: {', '.join(allowed_values)}"
-            )
+            raise click.BadParameter(f"Invalid value for --map option. Allowed values are: {', '.join(allowed_values)}")
     return value
+
 
 @click.command()
 @click.option(
@@ -53,7 +134,7 @@ def validate_option_map(ctx, param, value) -> bool:
     "input_folder",
     type=click.Path(exists=True),
     required=True,
-    help="""The folder which contains `trip.json` and `locations.json`.
+    help="""The folder which contains 'trip.json' and 'locations.json'.
     It's inside the Polarsteps data export of a single trip.""",
 )
 @click.option(
@@ -72,26 +153,45 @@ def validate_option_map(ctx, param, value) -> bool:
     help="Whether to generate a PDF. Specify name of PDF file to create.",
 )
 @click.option(
-    "--map", 
+    "--map",
     "generate_maps",
-     is_flag=False, 
-     default=None, 
-     help="""Generate maps for selected steps. Possible values are a comma-separated list of:
+    is_flag=False,
+    default=None,
+    help="""Generate maps for selected steps. Possible values are a comma-separated list of:
      'step' to generate a map for each step.
      'trip' to generate a single map for the entire trip.
-     'wl' to add walking line between steps.""", 
-     callback=validate_option_map,
+     'wl' to add walking line between steps. In combination with 'trip' only""",
+    callback=validate_option_map,
+)
+@click.option(
+    "--zoom",
+    "zoom_factor",
+    is_flag=False,
+    default=str(Const.ZOOM_LEVEL_SINGLE_STEP_VIEW_DEFAULT),
+    help=f"Specify zoom factor in range [{Const.ZOOM_LEVEL_SINGLE_STEP_VIEW_MIN} "
+    + f"and {Const.ZOOM_LEVEL_SINGLE_STEP_VIEW_MAX}]. Only used in combination with '--map step'.",
+    callback=validate_zoom_factor,
+    show_default=True,
+)
+@click.option(
+    "--image-size",
+    "image_size_x_y",
+    is_flag=False,
+    default=f"{Const.IMAGE_SIZE_X_DEFAULT}x{Const.IMAGE_SIZE_Y_DEFAULT}",
+    help="Specify image size in pixel when creating maps in format WIDTHxHEIGHT. Used in combination with '--map'.",
+    callback=validate_image_size,
+    show_default=True,
 )
 @click.option("--stat", "statistics", is_flag=True, default=False, help="Print statistic of input files.", type=bool)
 @click.option(
     "--filter",
     "step_filter",
     is_flag=False,
-    # maybe use  'flag_value=Const.ALL_STEPS_KEYWORD,' in combination with '# default=None'
-    default=None,
-    help="Specify which steps to process as list (e.g. '2,6') or range (e.g. '5-7') or combinations thereof. " \
+    default=Const.ALL_STEPS_KEYWORD,
+    help="Specify which steps to process as list (e.g. '2,6') or range (e.g. '5-7') or combinations thereof. "
     "Otherwise all existing steps are processed.",
     callback=validate_option_filter,
+    show_default=True,
 )
 @click.option(
     "--log",
@@ -109,6 +209,8 @@ def cli(
     statistics: bool,
     step_filter: str,
     generate_maps: bool,
+    zoom_factor: int,
+    image_size_x_y: str,
 ) -> None:
     """Entry point for the application."""
     # note: its ensured that both folders <input_folder> and <output_folder> exist by click options

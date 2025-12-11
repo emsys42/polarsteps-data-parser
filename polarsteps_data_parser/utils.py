@@ -100,3 +100,20 @@ def decode_step_filter(step_filter: str) -> list[int]:
             steps.add(int(part))
 
     return sorted(steps)
+
+
+def decode_image_size(image_size: str) -> tuple[int, int]: # noqa: D103
+    """Decode image size from string in format 'WIDTHxHEIGHT'."""
+    if "x" not in image_size.lower():
+        raise ValueError("Image size must be in format 'WIDTHxHEIGHT'.")
+
+    try:
+        width_str, height_str = image_size.lower().split("x")
+        width = int(width_str)
+        height = int(height_str)
+    except ValueError:
+        raise ValueError("Width and height must be integers.")
+
+    if width <= 0 or height <= 0:
+        raise ValueError("Width and height must be positive integers.")
+    return width, height
