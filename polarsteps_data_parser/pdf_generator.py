@@ -47,18 +47,10 @@ class PDFGenerator:
     def generate_step_pages(self, step: Step) -> None:
         """Add a step to the canvas."""
         self.new_page()
-
         self.heading(step.name)
-
         self.short_text(f"Location: {step.location.name}, {step.location.country}")
         self.short_text(f"Date: {step.date.strftime('%d-%m-%Y')}")
-
-        self.long_text(step.description)
-
-        for comment in step.comments:
-            self.short_text(comment.follower.name, bold=True)
-            self.long_text(comment.text)
-
+        self.long_text(step.description or "")
         for photo in step.photos:
             self.photo(photo)
 
