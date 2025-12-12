@@ -2,7 +2,7 @@
 name = "polarsteps-data-parser"
 version = "0.1.0"
 description = "Parse and extract data from the data export of travel tracking app Polarsteps."
-authors = ["Niek van Leeuwen <ik@niekvanleeuwen.nl>"]
+authors = ["Juergen Herrmann <emsys42@gmx.de>"]
 license = "GNU GPLv3"
 readme = "README.md"
 

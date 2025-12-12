@@ -22,6 +22,15 @@ class Location:
         return Location(lat=data["lat"], lon=data["lon"], time=utils.parse_date(data["time"]))
 
 
+def load_locations_from_file(file: Path) -> list[Location]:
+    """Load all locations of a trip in Polarsteps which are located in file 'locations.json'."""
+    if not file.exists():
+        raise FileNotFoundError(f"File '{file}' does not exist.")
+    location_data_json = utils.load_json_from_file(file)
+    locations = [Location.from_json(data) for data in location_data_json["locations"]]
+    return locations
+
+
 @dataclass
 class StepLocation:
     """Location as provided by a step."""
@@ -118,3 +127,12 @@ class Trip:
         if step_number < 1 or step_number > len(self.steps):
             raise IndexError(f"Step number {step_number} is out of range for trip with {len(self.steps)} steps.")
         return self.steps[step_number - 1]
+
+
+def load_trip_from_file(file: Path) -> Trip:  # noqa: D103
+    if not file.exists():
+        raise FileNotFoundError(f"File {file} does not exist.")
+    trip_data_json = utils.load_json_from_file(file)
+    trip = Trip.from_json(trip_data_json)
+    trip.lookup_media_files(file.parent)
+    return trip

@@ -6,9 +6,9 @@ from typing import Optional
 import click
 from loguru import logger
 
+import polarsteps_data_parser.model as model
 import polarsteps_data_parser.utils as utils
 from polarsteps_data_parser.map_generator import MapGenerator
-from polarsteps_data_parser.model import Location, Step, Trip
 from polarsteps_data_parser.pdf_generator import PDFGenerator
 
 
@@ -41,6 +41,9 @@ class UserConfig:
 
     @property
     def output_folder(self) -> str:  # noqa: D102
+        path = Path(self._output_folder)
+        if not path.exists():
+            path.mkdir(parents=True)
         return self._output_folder
 
     @property
@@ -141,10 +144,9 @@ def validate_option_map(ctx, param, value) -> Optional[str]:
 @click.option(
     "--output-folder",
     "output_folder",
-    type=click.Path(exists=True),
     is_flag=False,
     default=os.getcwd(),
-    help="The folder where to create artefacts. If not specified, the current working directory is used.",
+    help="The folder where to create artefacts. It's created on demand. If not specified, the current working directory is used.",
 )
 @click.option(
     "--pdf",
@@ -218,8 +220,8 @@ def cli(
 
     configure_logger(loglevel)
 
-    trip = load_trip_data(Path(input_folder), "trip.json")
-    locations = load_location_data(Path(input_folder), "locations.json")
+    trip = model.load_trip_from_file(Path(os.path.join(input_folder, "trip.json")))
+    locations = model.load_locations_from_file(Path(os.path.join(input_folder, "locations.json")))
 
     config = UserConfig(input_folder, output_folder, zoom_factor, image_size_x_y, calulate_steps_to_process(step_filter, trip))
 
@@ -235,8 +237,11 @@ def cli(
     if generate_maps and "trip" in generate_maps:
         generate_single_map_for_selected_steps(config, trip, generate_maps)
 
+    if not any([statistics, pdf_filename, generate_maps]):
+        click.echo("No action specified. See --stat, --pdf or --map")
 
-def generate_statistics(trip: Trip, locations: list[MapGenerator.GPSPoint]) -> None:  # noqa: D103
+
+def generate_statistics(trip: model.Trip, locations: list[MapGenerator.GPSPoint]) -> None:  # noqa: D103
     """Generate and print statistics about the trip and location data."""
     click.echo(f"Trip name: {trip.name}")
     click.echo(f"Number of steps: {len(trip.steps)}")
@@ -247,7 +252,7 @@ def generate_statistics(trip: Trip, locations: list[MapGenerator.GPSPoint]) -> N
     click.echo(f"Number of GPS points in locations file: {len(locations)}")
 
 
-def generate_pdf(config: UserConfig, trip: Trip, filename: str) -> None:  # noqa: D103
+def generate_pdf(config: UserConfig, trip: model.Trip, filename: str) -> None:  # noqa: D103
     output_path = Path(os.path.join(config.output_folder, filename))
     progress_bar = click.progressbar(
         length=len(config.step_numbers_to_process),
@@ -257,7 +262,7 @@ def generate_pdf(config: UserConfig, trip: Trip, filename: str) -> None:  # noqa
     pdf_generator.generate_pdf(trip, progress_bar, config.step_numbers_to_process)
 
 
-def generate_distinct_map_for_selected_steps(config: UserConfig, trip: Trip) -> None:  # noqa: D103
+def generate_distinct_map_for_selected_steps(config: UserConfig, trip: model.Trip) -> None:  # noqa: D103
     progress_bar = click.progressbar(
         length=len(config.step_numbers_to_process),
         label=f"Generating maps for {len(config.step_numbers_to_process)} steps into folder {config.output_folder}",
@@ -269,7 +274,7 @@ def generate_distinct_map_for_selected_steps(config: UserConfig, trip: Trip) -> 
             visible_bar.update(zero_based_index + 1)
 
 
-def generate_distinct_map_for_selected_step(config: UserConfig, step_number: int, step: Step) -> None:  # noqa: D103
+def generate_distinct_map_for_selected_step(config: UserConfig, step_number: int, step: model.Step) -> None:  # noqa: D103
     filename = config.step_map_filename_pattern.format(step_number=step_number)
     output_path = Path(os.path.join(config.output_folder, filename))
     logger.debug(f"Generating map for step {step_number} into {output_path}")
@@ -279,7 +284,7 @@ def generate_distinct_map_for_selected_step(config: UserConfig, step_number: int
     map_generator.write_to_png(output_path)
 
 
-def generate_single_map_for_selected_steps(config: UserConfig, trip: Trip, generate_maps: str) -> None:  # noqa: D103
+def generate_single_map_for_selected_steps(config: UserConfig, trip: model.Trip, generate_maps: str) -> None:  # noqa: D103
     output_path = Path(os.path.join(config.output_folder, config.trip_map_filename_pattern))
     logger.info(f"Generating map for selected steps into {output_path}")
 
@@ -329,7 +334,7 @@ def configure_logger(loglevel: str) -> None:  # noqa: D103
         logger.debug(f"logger set to loglevel '{loglevel}'")
 
 
-def calulate_steps_to_process(step_filter: str, trip: Trip) -> list[int]:  # noqa: D103
+def calulate_steps_to_process(step_filter: str, trip: model.Trip) -> list[int]:  # noqa: D103
     if step_filter == Const.ALL_STEPS_KEYWORD:
         steps_to_process = range(1, len(trip.steps) + 1)
     else:
@@ -344,25 +349,6 @@ def calulate_steps_to_process(step_filter: str, trip: Trip) -> list[int]:  # noq
             of existing ({len(trip.steps)}) steps."
         )
     return steps_to_process
-
-
-def load_location_data(input_folder: Path, trip_data_json_filename: str) -> list[Location]:  # noqa: D103
-    location_data_json_file = Path(os.path.join(input_folder, trip_data_json_filename))
-    if not location_data_json_file.exists():
-        raise FileNotFoundError(f"File '{location_data_json_file}' does not exist.")
-    location_data_json = utils.load_json_from_file(location_data_json_file)
-    locations = [Location.from_json(data) for data in location_data_json["locations"]]
-    return locations
-
-
-def load_trip_data(input_folder: Path, trip_data_json_filename: str) -> Trip:  # noqa: D103
-    trip_data_json_file = Path(os.path.join(input_folder, trip_data_json_filename))
-    if not trip_data_json_file.exists():
-        raise FileNotFoundError(f"File {trip_data_json_file} does not exist.")
-    trip_data_json = utils.load_json_from_file(trip_data_json_file)
-    trip = Trip.from_json(trip_data_json)
-    trip.lookup_media_files(input_folder)
-    return trip
 
 
 if __name__ == "__main__":

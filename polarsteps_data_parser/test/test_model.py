@@ -1,6 +1,8 @@
-import pytest
 import json
-import model
+
+import pytest
+
+from .context import model
 
 
 def assert_equal_json_docs(lhs: str, rhs: str):  # noqa: D103
